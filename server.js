@@ -109,16 +109,17 @@ app.post('/api/fortune', async (req, res) => {
     const modelName = process.env.OPENAI_MODEL || 'gpt-4o-mini';
     const seed = hashStringToSeed(cacheKey);
 
-    const completion = await openai.chat.completions.create({
+    const completionPayload = {
       model: modelName,
       messages: [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userPrompt }
       ],
-      temperature: 0.2, // 일관된 점괘와 톤을 위해 낮은 temperature 적용
-      seed: seed,       // 동일 입력값에 대해 일관된 토큰 확률 부여
-      max_tokens: 1000
-    });
+      seed: seed, // 동일 입력값에 대해 일관된 토큰 확률 부여
+      max_completion_tokens: 1000
+    };
+
+    const completion = await openai.chat.completions.create(completionPayload);
 
     const fortuneResult = completion.choices[0]?.message?.content || '오늘의 운세를 불러오지 못했습니다. 다시 시도해주세요.';
 
@@ -151,6 +152,8 @@ app.post('/api/fortune', async (req, res) => {
 // 3. 피드백 조회 API (GET /api/feedback)
 app.get('/api/feedback', async (req, res) => {
   try {
+    const userToken = (req.query.userToken || '').toString().slice(0, 100);
+
     const { data, error } = await supabase
       .from('feedbacks')
       .select('id, content, created_at')
@@ -165,9 +168,46 @@ app.get('/api/feedback', async (req, res) => {
       });
     }
 
+    const items = (data || []).map(item => {
+      const contentRaw = item.content || '';
+      const match = contentRaw.match(/^([\s\S]*?)(?:\n<!--REACTIONS:([\s\S]*?)-->)?$/);
+      const cleanContent = match ? match[1].trim() : contentRaw;
+      
+      let reactionsData = {};
+      try {
+        if (match && match[2]) {
+          reactionsData = JSON.parse(match[2]);
+        }
+      } catch (e) {
+        reactionsData = {};
+      }
+
+      const reactionCounts = {};
+      const userReactions = [];
+
+      for (const [rId, users] of Object.entries(reactionsData)) {
+        if (Array.isArray(users)) {
+          if (users.length > 0) {
+            reactionCounts[rId] = users.length;
+          }
+          if (userToken && users.includes(userToken)) {
+            userReactions.push(rId);
+          }
+        }
+      }
+
+      return {
+        id: item.id,
+        content: cleanContent,
+        created_at: item.created_at,
+        reactions: reactionCounts,
+        userReactions: userReactions
+      };
+    });
+
     return res.json({
       success: true,
-      data: data || []
+      data: items
     });
   } catch (error) {
     console.error('피드백 조회 예외:', error.message);
@@ -191,8 +231,16 @@ app.post('/api/feedback', async (req, res) => {
       });
     }
 
-    const trimmedContent = content.trim();
-    if (trimmedContent.length > 500) {
+    // 악의적인 메타데이터 주입 방지 및 500자 제한
+    const cleanInput = content.trim().replace(/\n?<!--REACTIONS:[\s\S]*?-->/g, '');
+    if (!cleanInput) {
+      return res.status(400).json({
+        success: false,
+        error: '피드백 내용을 입력해주세요.'
+      });
+    }
+
+    if (cleanInput.length > 500) {
       return res.status(400).json({
         success: false,
         error: '피드백은 최대 500자까지 작성하실 수 있습니다.'
@@ -201,7 +249,7 @@ app.post('/api/feedback', async (req, res) => {
 
     const { data, error } = await supabase
       .from('feedbacks')
-      .insert([{ content: trimmedContent }])
+      .insert([{ content: cleanInput }])
       .select();
 
     if (error) {
@@ -212,10 +260,18 @@ app.post('/api/feedback', async (req, res) => {
       });
     }
 
+    const newItem = data && data[0] ? {
+      id: data[0].id,
+      content: data[0].content,
+      created_at: data[0].created_at,
+      reactions: {},
+      userReactions: []
+    } : null;
+
     return res.status(201).json({
       success: true,
       message: '소중한 피드백이 등록되었습니다. 감사합니다!',
-      data: data ? data[0] : null
+      data: newItem
     });
   } catch (error) {
     console.error('피드백 등록 예외:', error.message);
@@ -223,6 +279,99 @@ app.post('/api/feedback', async (req, res) => {
       success: false,
       error: '서버 내부 오류로 피드백을 등록하지 못했습니다.'
     });
+  }
+});
+
+// 5. 피드백 리액션 토글 API (POST /api/feedback/:id/react)
+app.post('/api/feedback/:id/react', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { reactionId, userToken } = req.body || {};
+
+    const VALID_REACTIONS = ['check', 'fix', 'thanks', 'clap'];
+    if (!reactionId || !VALID_REACTIONS.includes(reactionId)) {
+      return res.status(400).json({ success: false, error: '올바른 반응 종류를 선택해주세요.' });
+    }
+    if (!userToken || typeof userToken !== 'string' || userToken.length > 100) {
+      return res.status(400).json({ success: false, error: '유효한 사용자 정보가 필요합니다.' });
+    }
+
+    // 1) 대상 피드백 조회
+    const { data, error } = await supabase
+      .from('feedbacks')
+      .select('id, content')
+      .eq('id', id)
+      .single();
+
+    if (error || !data) {
+      return res.status(404).json({ success: false, error: '해당 피드백을 찾을 수 없습니다.' });
+    }
+
+    const contentRaw = data.content || '';
+    const match = contentRaw.match(/^([\s\S]*?)(?:\n<!--REACTIONS:([\s\S]*?)-->)?$/);
+    const cleanContent = match ? match[1].trim() : contentRaw;
+
+    let reactionsData = {};
+    try {
+      if (match && match[2]) {
+        reactionsData = JSON.parse(match[2]);
+      }
+    } catch (e) {
+      reactionsData = {};
+    }
+
+    if (!Array.isArray(reactionsData[reactionId])) {
+      reactionsData[reactionId] = [];
+    }
+
+    // 2) 내가 누른 반응이면 취소(토글 OFF), 아니면 추가(토글 ON)
+    const userIdx = reactionsData[reactionId].indexOf(userToken);
+    if (userIdx > -1) {
+      reactionsData[reactionId].splice(userIdx, 1);
+      if (reactionsData[reactionId].length === 0) {
+        delete reactionsData[reactionId];
+      }
+    } else {
+      reactionsData[reactionId].push(userToken);
+    }
+
+    // 3) Supabase DB에 업데이트 반영
+    const reactionsJson = Object.keys(reactionsData).length > 0 ? JSON.stringify(reactionsData) : '';
+    const updatedContent = reactionsJson ? `${cleanContent}\n<!--REACTIONS:${reactionsJson}-->` : cleanContent;
+
+    const { error: updateError } = await supabase
+      .from('feedbacks')
+      .update({ content: updatedContent })
+      .eq('id', id);
+
+    if (updateError) {
+      console.error('리액션 저장 DB 오류:', updateError.message);
+      return res.status(500).json({ success: false, error: '리액션을 저장하지 못했습니다.' });
+    }
+
+    // 4) 모든 사용자에게 표시될 전체 카운트 및 요청자 본인 활성화 상태 집계
+    const reactionCounts = {};
+    const userReactions = [];
+
+    for (const [rId, users] of Object.entries(reactionsData)) {
+      if (Array.isArray(users)) {
+        if (users.length > 0) {
+          reactionCounts[rId] = users.length;
+        }
+        if (users.includes(userToken)) {
+          userReactions.push(rId);
+        }
+      }
+    }
+
+    return res.json({
+      success: true,
+      reactions: reactionCounts,
+      userReactions: userReactions
+    });
+  } catch (err) {
+    console.error('리액션 토글 예외:', err.message);
+    return res.status(500).json({ success: false, error: '서버 내부 오류가 발생했습니다.' });
   }
 });
 

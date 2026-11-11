@@ -728,6 +728,18 @@ body {
   transform: scale(1.08);
 }
 
+.reaction-option-btn.active {
+  background: rgba(197, 160, 89, 0.28);
+  color: #f7e7c4;
+}
+
+.reaction-check {
+  font-size: 0.75rem;
+  color: #c5a059;
+  font-weight: 700;
+  margin-left: 2px;
+}
+
 .feedback-item-time {
   font-size: 0.78rem;
   color: var(--text-dim);

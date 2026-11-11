@@ -285,10 +285,21 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
+  // 사용자 고유 식별 토큰 (브라우저별 1개 생성 및 유지)
+  function getUserToken() {
+    let token = localStorage.getItem('jayeong_fortune_user_token');
+    if (!token) {
+      token = 'usr_' + Math.random().toString(36).substring(2, 10) + Date.now().toString(36);
+      localStorage.setItem('jayeong_fortune_user_token', token);
+    }
+    return token;
+  }
+
   // 피드백 목록 가져오기
   async function fetchFeedbacks() {
     try {
-      const res = await fetch('/api/feedback');
+      const userToken = getUserToken();
+      const res = await fetch(`/api/feedback?userToken=${encodeURIComponent(userToken)}`);
       const result = await res.json();
 
       if (!res.ok || !result.success) {
@@ -319,7 +330,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const reactionsWrapper = document.createElement('div');
         reactionsWrapper.className = 'feedback-reactions-wrapper';
-        renderReactionsUI(reactionsWrapper, item.id);
+        renderReactionsUI(reactionsWrapper, item.id, item.reactions || {}, item.userReactions || []);
 
         const timeEl = document.createElement('time');
         timeEl.className = 'feedback-item-time';
@@ -361,7 +372,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // ==========================================
-  // 3. 카카오톡 스타일 피드백 리액션 이모티콘 4종
+  // 3. 카카오톡 스타일 피드백 리액션 이모티콘 4종 (서버 전역 동기화)
   // ==========================================
   const AVAILABLE_REACTIONS = [
     { id: 'check', label: '확인완료', emoji: '✅' },
@@ -370,68 +381,63 @@ document.addEventListener('DOMContentLoaded', () => {
     { id: 'clap', label: '짝짝짝', emoji: '👏' }
   ];
 
-  function getStoredReactions(feedbackId) {
-    try {
-      const counts = JSON.parse(localStorage.getItem('fortune_reactions_counts') || '{}');
-      const myReactions = JSON.parse(localStorage.getItem('fortune_my_reactions') || '{}');
-      return {
-        counts: counts[feedbackId] || {},
-        mine: myReactions[feedbackId] || []
-      };
-    } catch {
-      return { counts: {}, mine: [] };
+  // 리액션 토글 함수 (낙관적 UI 업데이트 + 서버 Supabase 동기화)
+  async function toggleReaction(feedbackId, reactionId, container, counts, userReactions) {
+    const userToken = getUserToken();
+    const isMine = userReactions.includes(reactionId);
+
+    // 1) 즉각적인 UI 반영 (낙관적 업데이트)
+    const nextCounts = { ...counts };
+    const nextUserReactions = [...userReactions];
+
+    if (isMine) {
+      // 본인이 누른 것 취소
+      const idx = nextUserReactions.indexOf(reactionId);
+      if (idx > -1) nextUserReactions.splice(idx, 1);
+      nextCounts[reactionId] = Math.max(0, (nextCounts[reactionId] || 1) - 1);
+      if (nextCounts[reactionId] === 0) delete nextCounts[reactionId];
+    } else {
+      // 새로운 반응 추가
+      nextUserReactions.push(reactionId);
+      nextCounts[reactionId] = (nextCounts[reactionId] || 0) + 1;
     }
-  }
 
-  function toggleReaction(feedbackId, reactionId) {
+    renderReactionsUI(container, feedbackId, nextCounts, nextUserReactions);
+
+    // 2) 서버 API 호출하여 DB에 영구 저장 (다른 접속자에게도 표시되도록)
     try {
-      const allCounts = JSON.parse(localStorage.getItem('fortune_reactions_counts') || '{}');
-      const allMine = JSON.parse(localStorage.getItem('fortune_my_reactions') || '{}');
-
-      const counts = allCounts[feedbackId] || {};
-      const mine = allMine[feedbackId] || [];
-
-      const isAlreadySelected = mine.includes(reactionId);
-
-      if (isAlreadySelected) {
-        // 반응 취소
-        allMine[feedbackId] = mine.filter(id => id !== reactionId);
-        counts[reactionId] = Math.max(0, (counts[reactionId] || 1) - 1);
-        if (counts[reactionId] === 0) delete counts[reactionId];
-      } else {
-        // 반응 추가
-        mine.push(reactionId);
-        allMine[feedbackId] = mine;
-        counts[reactionId] = (counts[reactionId] || 0) + 1;
+      const res = await fetch(`/api/feedback/${feedbackId}/react`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reactionId, userToken })
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        // 서버에서 최종 확정된 카운트와 사용자 반응으로 동기화
+        renderReactionsUI(container, feedbackId, data.reactions || {}, data.userReactions || []);
       }
-
-      allCounts[feedbackId] = counts;
-      localStorage.setItem('fortune_reactions_counts', JSON.stringify(allCounts));
-      localStorage.setItem('fortune_my_reactions', JSON.stringify(allMine));
     } catch (err) {
-      console.error('리액션 저장 오류:', err);
+      console.error('리액션 동기화 실패:', err);
     }
   }
 
-  function renderReactionsUI(container, feedbackId) {
+  function renderReactionsUI(container, feedbackId, counts = {}, userReactions = []) {
     container.innerHTML = '';
-    const { counts, mine } = getStoredReactions(feedbackId);
 
-    // 활성화된 리액션 뱃지들 렌더링
+    // 활성화된 리액션 뱃지들 렌더링 (다른 사람이 누른 카운트도 모두 표시)
     AVAILABLE_REACTIONS.forEach(r => {
       const count = counts[r.id] || 0;
-      const isMine = mine.includes(r.id);
+      const isMine = userReactions.includes(r.id);
 
       if (count > 0 || isMine) {
         const badge = document.createElement('button');
         badge.type = 'button';
         badge.className = `reaction-badge ${isMine ? 'active' : ''}`;
-        badge.title = isMine ? '클릭하여 반응 취소' : '클릭하여 공감하기';
+        badge.title = isMine ? '클릭하여 내 반응 취소' : '클릭하여 나도 공감하기';
         badge.innerHTML = `<span>${r.emoji}</span> <span>${r.label}</span> <span class="reaction-count">${count}</span>`;
         badge.addEventListener('click', (e) => {
           e.stopPropagation();
-          toggleReaction(feedbackId, r.id);
-          renderReactionsUI(container, feedbackId);
+          toggleReaction(feedbackId, r.id, container, counts, userReactions);
         });
         container.appendChild(badge);
       }
@@ -453,15 +459,15 @@ document.addEventListener('DOMContentLoaded', () => {
       popover.className = 'reaction-picker-popover';
 
       AVAILABLE_REACTIONS.forEach(r => {
+        const isMine = userReactions.includes(r.id);
         const optBtn = document.createElement('button');
         optBtn.type = 'button';
-        optBtn.className = 'reaction-option-btn';
-        optBtn.innerHTML = `<span>${r.emoji}</span> <span>${r.label}</span>`;
+        optBtn.className = `reaction-option-btn ${isMine ? 'active' : ''}`;
+        optBtn.innerHTML = `<span>${r.emoji}</span> <span>${r.label}</span> ${isMine ? '<span class="reaction-check">✓</span>' : ''}`;
         optBtn.addEventListener('click', (ev) => {
           ev.stopPropagation();
-          toggleReaction(feedbackId, r.id);
           popover.remove();
-          renderReactionsUI(container, feedbackId);
+          toggleReaction(feedbackId, r.id, container, counts, userReactions);
         });
         popover.appendChild(optBtn);
       });

@@ -18,3 +18,8 @@ CREATE POLICY "Allow public insert feedbacks" ON public.feedbacks
     FOR INSERT
     WITH CHECK (true);
 
+-- 리액션 업데이트 허용
+CREATE POLICY "Allow public update feedbacks" ON public.feedbacks
+    FOR UPDATE
+    USING (true);
+
