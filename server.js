@@ -97,13 +97,14 @@ app.post('/api/fortune', async (req, res) => {
 2문단: 재물운, 직장/학업운, 대인관계운 핵심 조언
 3문단: 오늘을 잘 보내기 위한 자영샘의 따뜻한 행운 팁(행운의 색, 숫자, 추천 행동 등)`;
 
-    const userPrompt = `사용자 사주 정보:
+    const userPrompt = `오늘 날짜: ${todayStr} (한국 표준시)
+사용자 사주 정보:
 - 이름: ${trimmedName}
 - 성별: ${gender}
 - 생년월일: ${birthdate} (${calendarType})
 - 태어난 시: ${birthTimeDesc}
 
-위 정보를 바탕으로 자영샘의 친절하고 통찰력 있는 '오늘의 운세'를 3문단으로 작성해 주세요.`;
+위 사주와 오늘(${todayStr})의 일진/간지 기운을 바탕으로 자영샘의 친절하고 통찰력 있는 '오늘의 운세'를 3문단으로 작성해 주세요.`;
 
     const modelName = process.env.OPENAI_MODEL || 'gpt-4o-mini';
     const seed = hashStringToSeed(cacheKey);

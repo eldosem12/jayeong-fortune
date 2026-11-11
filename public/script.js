@@ -89,7 +89,24 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (!isValid) return;
 
-    // 로딩 상태 시작
+    // 한국 표준시 기준 당일 운세 영구 캐시 키 (오늘 날짜 + 사주 정보)
+    const currentToday = getTodayKST();
+    const cacheKey = `jayeong_fortune_${currentToday}_${name}_${gender}_${birthdate}_${calendarType}_${birthHour || 'none'}`;
+
+    // 1) 오늘 이미 분석했던 동일 사주 이력이 있으면 다른 사주를 거쳤더라도 무조건 동일한 결과를 즉시 표시
+    try {
+      const cached = localStorage.getItem(cacheKey);
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        renderFortuneResult(parsed.name, parsed.fortune);
+        resultSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        return;
+      }
+    } catch (e) {
+      console.warn('캐시 읽기 예외:', e);
+    }
+
+    // 2) 오늘 처음 분석하는 사주인 경우에만 서버에 요청
     setFortuneLoading(true);
 
     try {
@@ -103,6 +120,25 @@ document.addEventListener('DOMContentLoaded', () => {
 
       if (!response.ok || !data.success) {
         throw new Error(data.error || '우주의 기운을 불러오는 데 실패했습니다.');
+      }
+
+      // 오늘 하루 동안 다른 사주를 몇 번 조회하고 다시 돌아와도 100% 동일하게 나오도록 브라우저에 영구 저장
+      try {
+        localStorage.setItem(cacheKey, JSON.stringify({
+          name: data.name,
+          fortune: data.fortune,
+          date: currentToday
+        }));
+
+        // 지난 날짜의 오래된 캐시는 자동 정리
+        for (let i = localStorage.length - 1; i >= 0; i--) {
+          const k = localStorage.key(i);
+          if (k && k.startsWith('jayeong_fortune_') && !k.startsWith(`jayeong_fortune_${currentToday}`)) {
+            localStorage.removeItem(k);
+          }
+        }
+      } catch (e) {
+        console.warn('캐시 저장 예외:', e);
       }
 
       // 결과 렌더링
