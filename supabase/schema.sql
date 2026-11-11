@@ -17,3 +17,4 @@ CREATE POLICY "Allow public read feedbacks" ON public.feedbacks
 CREATE POLICY "Allow public insert feedbacks" ON public.feedbacks
     FOR INSERT
     WITH CHECK (true);
+

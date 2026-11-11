@@ -287,3 +287,4 @@ document.addEventListener('DOMContentLoaded', () => {
   // 초기 피드백 목록 로드
   fetchFeedbacks();
 });
+
