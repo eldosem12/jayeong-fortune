@@ -9,6 +9,62 @@
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
+  <!-- 동양풍 산수화 배경 아트워크 레이어 (달, 첩첩산중, 전통 구름 및 굽이치는 파도) -->
+  <div class="oriental-backdrop" aria-hidden="true">
+    <div class="bg-mist"></div>
+    <div class="bg-moon"></div>
+    
+    <!-- 산맥 및 원경 수묵 실루엣 -->
+    <svg class="bg-svg bg-mountains" viewBox="0 0 1440 600" preserveAspectRatio="none">
+      <defs>
+        <linearGradient id="mtnGradFar" x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" stop-color="#7a8b99" stop-opacity="0.35"/>
+          <stop offset="100%" stop-color="#dfd7c5" stop-opacity="0.05"/>
+        </linearGradient>
+        <linearGradient id="mtnGradMid" x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" stop-color="#2d3f52" stop-opacity="0.55"/>
+          <stop offset="100%" stop-color="#182430" stop-opacity="0.25"/>
+        </linearGradient>
+      </defs>
+      <path d="M0,420 Q180,260 400,360 T800,300 T1200,270 T1440,340 L1440,600 L0,600 Z" fill="url(#mtnGradFar)"/>
+      <path d="M0,460 Q240,300 520,400 T1000,320 T1440,370 L1440,600 L0,600 Z" fill="url(#mtnGradFar)"/>
+      <path d="M-40,600 L-20,380 Q80,250 180,310 Q280,200 380,310 Q460,230 560,340 Q700,270 840,390 Q980,240 1120,350 Q1240,220 1360,320 L1460,340 L1460,600 Z" fill="url(#mtnGradMid)"/>
+    </svg>
+
+    <!-- 전통 구름 문양 -->
+    <svg class="bg-svg bg-clouds" viewBox="0 0 1440 500" preserveAspectRatio="none">
+      <path d="M70,130 Q100,110 130,125 Q150,100 180,115 Q210,105 230,130 Q245,150 220,165 Q200,175 170,170 Q140,180 110,170 Q80,175 65,155 Z" fill="#eeddbb" opacity="0.5"/>
+      <path d="M1210,80 Q1240,60 1270,75 Q1290,50 1320,65 Q1350,55 1370,80 Q1385,100 1360,115 Q1340,125 1310,120 Q1280,130 1250,120 Q1220,125 1205,105 Z" fill="#eeddbb" opacity="0.45"/>
+    </svg>
+
+    <!-- 하단 전통 남색 파도와 금빛 물결선 -->
+    <svg class="bg-svg bg-waves" viewBox="0 0 1440 280" preserveAspectRatio="none">
+      <defs>
+        <linearGradient id="waveDeep" x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" stop-color="#142232"/>
+          <stop offset="100%" stop-color="#080e16"/>
+        </linearGradient>
+        <linearGradient id="waveGold" x1="0%" y1="0%" x2="100%" y2="0%">
+          <stop offset="0%" stop-color="#c5a059"/>
+          <stop offset="50%" stop-color="#e9d3a0"/>
+          <stop offset="100%" stop-color="#c5a059"/>
+        </linearGradient>
+      </defs>
+      <path d="M0,110 C160,50 280,170 440,110 C600,50 720,170 880,110 C1040,50 1160,170 1320,110 C1380,85 1410,95 1440,105 L1440,280 L0,280 Z" fill="#1b2d40" opacity="0.9"/>
+      <path d="M0,110 C160,50 280,170 440,110 C600,50 720,170 880,110 C1040,50 1160,170 1320,110 C1380,85 1410,95 1440,105" stroke="url(#waveGold)" stroke-width="2.5" fill="none" opacity="0.8"/>
+
+      <path d="M0,150 C120,100 240,200 360,150 C480,100 600,200 720,150 C840,100 960,200 1080,150 C1200,100 1320,200 1440,150 L1440,280 L0,280 Z" fill="url(#waveDeep)"/>
+      <path d="M0,150 C120,100 240,200 360,150 C480,100 600,200 720,150 C840,100 960,200 1080,150 C1200,100 1320,200 1440,150" stroke="#d4af37" stroke-width="2" fill="none" opacity="0.7"/>
+
+      <path d="M0,190 C80,160 160,220 240,190 C320,160 400,220 480,190 C560,160 640,220 720,190 C800,160 880,220 960,190 C1040,160 1120,220 1200,190 C1280,160 1360,220 1440,190 L1440,280 L0,280 Z" fill="#0b131e"/>
+      <path d="M0,190 C80,160 160,220 240,190 C320,160 400,220 480,190 C560,160 640,220 720,190 C800,160 880,220 960,190 C1040,160 1120,220 1200,190 C1280,160 1360,220 1440,190" stroke="#e0c068" stroke-width="2" fill="none" opacity="0.9"/>
+    </svg>
+
+    <!-- 좌측 소나무 가지 & 우측 매화 꽃가지 장식 실루엣 -->
+    <div class="oriental-branch branch-left"></div>
+    <div class="oriental-branch branch-right"></div>
+  </div>
+
   <!-- 배경 별빛 효과 -->
   <div class="stars-overlay" aria-hidden="true"></div>
 
