@@ -485,5 +485,101 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // 초기 피드백 목록 로드
   fetchFeedbacks();
+
+  // ==========================================
+  // 4. 흩날리는 매화 꽃잎 & 잎사귀 캔버스 효과
+  // ==========================================
+  function initFallingPetals() {
+    const canvas = document.getElementById('petalCanvas');
+    if (!canvas) return;
+
+    const ctx = canvas.getContext('2d');
+    let width = (canvas.width = window.innerWidth);
+    let height = (canvas.height = window.innerHeight);
+
+    window.addEventListener('resize', () => {
+      width = canvas.width = window.innerWidth;
+      height = canvas.height = window.innerHeight;
+    });
+
+    const PETAL_COUNT = 30;
+    const PETAL_COLORS = [
+      'rgba(255, 230, 238, 0.88)', // 은은한 연분홍 매화 꽃잎
+      'rgba(246, 195, 210, 0.82)', // 화사한 핑크 매화 꽃잎
+      'rgba(255, 252, 245, 0.88)', // 맑은 백매화 꽃잎
+      'rgba(235, 145, 170, 0.75)', // 진분홍 꽃잎
+      'rgba(205, 225, 190, 0.78)'  // 연두빛 여린 잎사귀
+    ];
+
+    class Petal {
+      constructor() {
+        this.reset(true);
+      }
+
+      reset(initial = false) {
+        this.x = Math.random() * (width + 80) - 40;
+        this.y = initial ? Math.random() * height : -30;
+        this.size = Math.random() * 8 + 8; // 8px ~ 16px 크기
+        this.speedY = Math.random() * 1.0 + 0.7; // 부드러운 하강 속도
+        this.speedX = Math.random() * 0.7 + 0.3; // 우측으로 자연스럽게 부는 바람
+        this.sway = Math.random() * Math.PI * 2;
+        this.swaySpeed = Math.random() * 0.02 + 0.015;
+        this.swayAmplitude = Math.random() * 22 + 10;
+        this.angle = Math.random() * Math.PI * 2;
+        this.angularSpeed = (Math.random() - 0.5) * 0.02;
+        this.flip = Math.random() * Math.PI;
+        this.flipSpeed = Math.random() * 0.03 + 0.01;
+        this.color = PETAL_COLORS[Math.floor(Math.random() * PETAL_COLORS.length)];
+      }
+
+      update() {
+        this.sway += this.swaySpeed;
+        this.flip += this.flipSpeed;
+        this.angle += this.angularSpeed;
+
+        this.x += this.speedX + Math.sin(this.sway) * 0.5;
+        this.y += this.speedY;
+
+        // 화면 바닥이나 우측 경계를 넘어가면 다시 상단에서 리스폰
+        if (this.y > height + 25 || this.x > width + 40) {
+          this.reset(false);
+        }
+      }
+
+      draw() {
+        ctx.save();
+        ctx.translate(this.x + Math.sin(this.sway) * this.swayAmplitude * 0.25, this.y);
+        ctx.rotate(this.angle);
+        ctx.scale(Math.cos(this.flip), 1);
+
+        ctx.fillStyle = this.color;
+        ctx.beginPath();
+
+        // 자연스러운 꽃잎 베지어 곡선
+        const r = this.size;
+        ctx.moveTo(0, -r);
+        ctx.bezierCurveTo(r * 0.8, -r * 0.6, r * 0.9, r * 0.5, 0, r);
+        ctx.bezierCurveTo(-r * 0.9, r * 0.5, -r * 0.8, -r * 0.6, 0, -r);
+        ctx.fill();
+
+        ctx.restore();
+      }
+    }
+
+    const petals = Array.from({ length: PETAL_COUNT }, () => new Petal());
+
+    function animate() {
+      ctx.clearRect(0, 0, width, height);
+      petals.forEach(p => {
+        p.update();
+        p.draw();
+      });
+      requestAnimationFrame(animate);
+    }
+
+    animate();
+  }
+
+  initFallingPetals();
 });
 
