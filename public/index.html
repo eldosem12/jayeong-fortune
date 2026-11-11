@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>자영샘 돈으로 하는 오늘의 운세 🌌</title>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- 배경 별빛 효과 -->
+  <div class="stars-overlay" aria-hidden="true"></div>
+
+  <div class="container">
+    <!-- 헤더 / 타이틀 영역 -->
+    <header class="hero-header">
+      <div class="badge">자영샘의 특급 후원 ✨</div>
+      <h1 class="main-title">자영샘 돈으로 하는<br><span class="glow-text">오늘의 운세</span></h1>
+      <p class="subtitle">사주명식의 기운을 AI로 정밀 분석하여 오늘의 흐름과 행운 팁을 전해드립니다.</p>
+    </header>
+
+    <!-- 폼 카드 영역 -->
+    <main class="main-card">
+      <form id="fortuneForm" novalidate>
+        <!-- 1. 이름 -->
+        <div class="form-group">
+          <label for="userName" class="form-label">이름</label>
+          <input 
+            type="text" 
+            id="userName" 
+            name="name" 
+            class="form-input" 
+            placeholder="이름을 입력하세요 (예: 홍길동)" 
+            maxlength="20"
+            required
+          >
+          <div class="error-msg" id="nameError"></div>
+        </div>
+
+        <!-- 2. 성별 -->
+        <div class="form-group">
+          <span class="form-label">성별</span>
+          <div class="segmented-control" role="radiogroup" aria-label="성별 선택">
+            <label class="segmented-option">
+              <input type="radio" name="gender" value="남성" checked>
+              <span class="segment-btn">남성</span>
+            </label>
+            <label class="segmented-option">
+              <input type="radio" name="gender" value="여성">
+              <span class="segment-btn">여성</span>
+            </label>
+          </div>
+        </div>
+
+        <!-- 3. 생년월일 & 양력/음력 -->
+        <div class="form-row">
+          <div class="form-group flex-1">
+            <label for="birthDate" class="form-label">생년월일</label>
+            <input 
+              type="date" 
+              id="birthDate" 
+              name="birthdate" 
+              class="form-input" 
+              required
+            >
+            <div class="error-msg" id="birthDateError"></div>
+          </div>
+
+          <div class="form-group">
+            <span class="form-label">양력 / 음력</span>
+            <div class="segmented-control" role="radiogroup" aria-label="양력 음력 선택">
+              <label class="segmented-option">
+                <input type="radio" name="calendarType" value="양력" checked>
+                <span class="segment-btn">양력</span>
+              </label>
+              <label class="segmented-option">
+                <input type="radio" name="calendarType" value="음력">
+                <span class="segment-btn">음력</span>
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <!-- 4. 태어난 시 -->
+        <div class="form-group">
+          <label for="birthHour" class="form-label">태어난 시 (선택)</label>
+          <div class="select-wrapper">
+            <select id="birthHour" name="birthHour" class="form-select">
+              <option value="모름">태어난 시 모름 (미상)</option>
+              <option value="자시 (23:30 ~ 01:29)">자시 (子時 / 23:30 ~ 01:29)</option>
+              <option value="축시 (01:30 ~ 03:29)">축시 (丑時 / 01:30 ~ 03:29)</option>
+              <option value="인시 (03:30 ~ 05:29)">인시 (寅時 / 03:30 ~ 05:29)</option>
+              <option value="묘시 (05:30 ~ 07:29)">묘시 (卯時 / 05:30 ~ 07:29)</option>
+              <option value="진시 (07:30 ~ 09:29)">진시 (辰時 / 07:30 ~ 09:29)</option>
+              <option value="사시 (09:30 ~ 11:29)">사시 (巳時 / 09:30 ~ 11:29)</option>
+              <option value="오시 (11:30 ~ 13:29)">오시 (午時 / 11:30 ~ 13:29)</option>
+              <option value="미시 (13:30 ~ 15:29)">미시 (未時 / 13:30 ~ 15:29)</option>
+              <option value="신시 (15:30 ~ 17:29)">신시 (申時 / 15:30 ~ 17:29)</option>
+              <option value="유시 (17:30 ~ 19:29)">유시 (酉時 / 17:30 ~ 19:29)</option>
+              <option value="술시 (19:30 ~ 21:29)">술시 (戌時 / 19:30 ~ 21:29)</option>
+              <option value="해시 (21:30 ~ 23:29)">해시 (亥時 / 21:30 ~ 23:29)</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- 제출 버튼 -->
+        <button type="submit" id="submitBtn" class="btn btn-primary">
+          <span class="btn-text">운세 보기</span>
+          <span class="spinner hidden" aria-hidden="true"></span>
+        </button>
+
+        <div id="formAlert" class="form-alert hidden" role="alert"></div>
+      </form>
+    </main>
+
+    <!-- 결과 영역 (초기 숨김) -->
+    <section id="resultSection" class="result-card hidden" aria-live="polite">
+      <div class="result-header">
+        <div class="result-tag">사주명식 풀이 결과</div>
+        <h2 id="resultTitle" class="result-title">님을 위한 오늘의 운세</h2>
+      </div>
+      <div id="resultContent" class="result-body"></div>
+      <div class="result-footer">
+        <button type="button" id="retryBtn" class="btn btn-outline">다시 분석하기</button>
+      </div>
+    </section>
+
+    <!-- 피드백 섹션 (화면 하단) -->
+    <section class="feedback-section">
+      <div class="feedback-header">
+        <h2 class="section-title">익명 한줄 방명록 & 피드백 💬</h2>
+        <p class="section-desc">자영샘의 운세 서비스는 어떠셨나요? 자유롭게 피드백을 남겨주세요 (로그인 불필요).</p>
+      </div>
+
+      <!-- 피드백 입력 폼 -->
+      <form id="feedbackForm" class="feedback-form">
+        <div class="feedback-input-wrapper">
+          <textarea 
+            id="feedbackContent" 
+            class="feedback-textarea" 
+            rows="3" 
+            placeholder="자영샘에게 전할 따뜻한 응원이나 피드백을 적어주세요! (최대 500자)"
+            maxlength="500"
+            required
+          ></textarea>
+          <div class="feedback-form-bottom">
+            <span id="feedbackCharCount" class="char-count">0 / 500자</span>
+            <button type="submit" id="feedbackSubmitBtn" class="btn btn-secondary">
+              <span class="btn-text">남기기</span>
+              <span class="spinner-small hidden" aria-hidden="true"></span>
+            </button>
+          </div>
+        </div>
+        <div id="feedbackAlert" class="feedback-alert hidden" role="alert"></div>
+      </form>
+
+      <!-- 피드백 목록 -->
+      <div class="feedback-list-wrapper">
+        <h3 class="list-heading">동기들의 최신 피드백 (<span id="feedbackTotalCount">0</span>)</h3>
+        <div id="feedbackList" class="feedback-list">
+          <div class="empty-placeholder">등록된 피드백을 불러오는 중입니다...</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 푸터 -->
+    <footer class="footer">
+      <p>본 서비스는 자영샘의 전폭적인 지지와 OpenAI 사주 분석 프롬프트로 운영됩니다.</p>
+    </footer>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
