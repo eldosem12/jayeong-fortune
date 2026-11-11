@@ -16,6 +16,31 @@ document.addEventListener('DOMContentLoaded', () => {
   const nameError = document.getElementById('nameError');
   const birthDateError = document.getElementById('birthDateError');
 
+  // 한국 표준시(KST) 기준 오늘 날짜 계산 (YYYY-MM-DD)
+  function getTodayKST() {
+    const now = new Date();
+    const kstOffset = 9 * 60; // UTC+9
+    const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
+    const kstDate = new Date(utc + (kstOffset * 60000));
+    const yyyy = kstDate.getFullYear();
+    const mm = String(kstDate.getMonth() + 1).padStart(2, '0');
+    const dd = String(kstDate.getDate()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}`;
+  }
+
+  // 오늘 날짜 이후(미래)는 생년월일 달력에서 아예 선택할 수 없도록 max 속성 부여
+  const todayKST = getTodayKST();
+  birthDateInput.max = todayKST;
+
+  // 생년월일 입력값 변경 시 실시간 미래 날짜 검증
+  birthDateInput.addEventListener('change', () => {
+    if (birthDateInput.value && birthDateInput.value > todayKST) {
+      birthDateError.textContent = '생년월일은 미래 날짜를 선택할 수 없습니다.';
+    } else {
+      birthDateError.textContent = '';
+    }
+  });
+
   // 결과 영역
   const resultSection = document.getElementById('resultSection');
   const resultTitle = document.getElementById('resultTitle');
@@ -54,6 +79,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (!birthdate) {
       birthDateError.textContent = '생년월일을 선택해주세요.';
+      if (isValid) birthDateInput.focus();
+      isValid = false;
+    } else if (birthdate > todayKST) {
+      birthDateError.textContent = '생년월일은 미래 날짜를 입력할 수 없습니다. 오늘 또는 과거 날짜를 선택해주세요.';
       if (isValid) birthDateInput.focus();
       isValid = false;
     }
@@ -248,12 +277,23 @@ document.addEventListener('DOMContentLoaded', () => {
         contentEl.className = 'feedback-item-content';
         contentEl.textContent = item.content;
 
+        // 하단 메타 & 카톡 스타일 리액션 영역
+        const footerEl = document.createElement('div');
+        footerEl.className = 'feedback-item-footer';
+
+        const reactionsWrapper = document.createElement('div');
+        reactionsWrapper.className = 'feedback-reactions-wrapper';
+        renderReactionsUI(reactionsWrapper, item.id);
+
         const timeEl = document.createElement('time');
         timeEl.className = 'feedback-item-time';
         timeEl.textContent = formatTimeAgo(item.created_at);
 
+        footerEl.appendChild(reactionsWrapper);
+        footerEl.appendChild(timeEl);
+
         itemEl.appendChild(contentEl);
-        itemEl.appendChild(timeEl);
+        itemEl.appendChild(footerEl);
         feedbackList.appendChild(itemEl);
       });
 
@@ -282,6 +322,129 @@ document.addEventListener('DOMContentLoaded', () => {
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const day = String(date.getDate()).padStart(2, '0');
     return `${year}.${month}.${day}`;
+  }
+
+  // ==========================================
+  // 3. 카카오톡 스타일 피드백 리액션 이모티콘 4종
+  // ==========================================
+  const AVAILABLE_REACTIONS = [
+    { id: 'check', label: '확인완료', emoji: '✅' },
+    { id: 'fix', label: '수정완료', emoji: '🛠️' },
+    { id: 'thanks', label: '감사합니다', emoji: '🙏' },
+    { id: 'clap', label: '짝짝짝', emoji: '👏' }
+  ];
+
+  function getStoredReactions(feedbackId) {
+    try {
+      const counts = JSON.parse(localStorage.getItem('fortune_reactions_counts') || '{}');
+      const myReactions = JSON.parse(localStorage.getItem('fortune_my_reactions') || '{}');
+      return {
+        counts: counts[feedbackId] || {},
+        mine: myReactions[feedbackId] || []
+      };
+    } catch {
+      return { counts: {}, mine: [] };
+    }
+  }
+
+  function toggleReaction(feedbackId, reactionId) {
+    try {
+      const allCounts = JSON.parse(localStorage.getItem('fortune_reactions_counts') || '{}');
+      const allMine = JSON.parse(localStorage.getItem('fortune_my_reactions') || '{}');
+
+      const counts = allCounts[feedbackId] || {};
+      const mine = allMine[feedbackId] || [];
+
+      const isAlreadySelected = mine.includes(reactionId);
+
+      if (isAlreadySelected) {
+        // 반응 취소
+        allMine[feedbackId] = mine.filter(id => id !== reactionId);
+        counts[reactionId] = Math.max(0, (counts[reactionId] || 1) - 1);
+        if (counts[reactionId] === 0) delete counts[reactionId];
+      } else {
+        // 반응 추가
+        mine.push(reactionId);
+        allMine[feedbackId] = mine;
+        counts[reactionId] = (counts[reactionId] || 0) + 1;
+      }
+
+      allCounts[feedbackId] = counts;
+      localStorage.setItem('fortune_reactions_counts', JSON.stringify(allCounts));
+      localStorage.setItem('fortune_my_reactions', JSON.stringify(allMine));
+    } catch (err) {
+      console.error('리액션 저장 오류:', err);
+    }
+  }
+
+  function renderReactionsUI(container, feedbackId) {
+    container.innerHTML = '';
+    const { counts, mine } = getStoredReactions(feedbackId);
+
+    // 활성화된 리액션 뱃지들 렌더링
+    AVAILABLE_REACTIONS.forEach(r => {
+      const count = counts[r.id] || 0;
+      const isMine = mine.includes(r.id);
+
+      if (count > 0 || isMine) {
+        const badge = document.createElement('button');
+        badge.type = 'button';
+        badge.className = `reaction-badge ${isMine ? 'active' : ''}`;
+        badge.title = isMine ? '클릭하여 반응 취소' : '클릭하여 공감하기';
+        badge.innerHTML = `<span>${r.emoji}</span> <span>${r.label}</span> <span class="reaction-count">${count}</span>`;
+        badge.addEventListener('click', (e) => {
+          e.stopPropagation();
+          toggleReaction(feedbackId, r.id);
+          renderReactionsUI(container, feedbackId);
+        });
+        container.appendChild(badge);
+      }
+    });
+
+    // + 반응 추가 버튼
+    const addBtn = document.createElement('button');
+    addBtn.type = 'button';
+    addBtn.className = 'reaction-add-btn';
+    addBtn.innerHTML = `<span>+</span> <span>반응</span>`;
+
+    addBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+
+      // 기존 팝오버 제거
+      document.querySelectorAll('.reaction-picker-popover').forEach(p => p.remove());
+
+      const popover = document.createElement('div');
+      popover.className = 'reaction-picker-popover';
+
+      AVAILABLE_REACTIONS.forEach(r => {
+        const optBtn = document.createElement('button');
+        optBtn.type = 'button';
+        optBtn.className = 'reaction-option-btn';
+        optBtn.innerHTML = `<span>${r.emoji}</span> <span>${r.label}</span>`;
+        optBtn.addEventListener('click', (ev) => {
+          ev.stopPropagation();
+          toggleReaction(feedbackId, r.id);
+          popover.remove();
+          renderReactionsUI(container, feedbackId);
+        });
+        popover.appendChild(optBtn);
+      });
+
+      container.appendChild(popover);
+
+      // 외부 영역 클릭 시 팝오버 닫기
+      const onDocClick = (clickEvent) => {
+        if (!popover.contains(clickEvent.target) && clickEvent.target !== addBtn) {
+          popover.remove();
+          document.removeEventListener('click', onDocClick);
+        }
+      };
+      setTimeout(() => {
+        document.addEventListener('click', onDocClick);
+      }, 0);
+    });
+
+    container.appendChild(addBtn);
   }
 
   // 초기 피드백 목록 로드

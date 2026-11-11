@@ -576,6 +576,7 @@ body {
   flex-direction: column;
   gap: 8px;
   transition: var(--transition);
+  position: relative;
 }
 
 .feedback-item:hover {
@@ -589,10 +590,137 @@ body {
   word-break: break-word;
 }
 
+/* 피드백 하단 메타 & 카카오톡 스타일 반응 영역 */
+.feedback-item-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+  padding-top: 8px;
+  border-top: 1px dashed rgba(255, 255, 255, 0.08);
+  position: relative;
+}
+
+.feedback-reactions-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  position: relative;
+}
+
+.reaction-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 9px;
+  border-radius: 9999px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #cbd5e1;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  user-select: none;
+}
+
+.reaction-badge:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(197, 160, 89, 0.4);
+  transform: translateY(-1px);
+}
+
+.reaction-badge.active {
+  background: rgba(197, 160, 89, 0.22);
+  border-color: #c5a059;
+  color: #f7e7c4;
+  font-weight: 700;
+  box-shadow: 0 0 10px rgba(197, 160, 89, 0.2);
+}
+
+.reaction-count {
+  font-variant-numeric: tabular-nums;
+  font-size: 0.75rem;
+}
+
+.reaction-add-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  padding: 3px 8px;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px dashed rgba(255, 255, 255, 0.2);
+  color: #94a3b8;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.reaction-add-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+  border-color: #c5a059;
+}
+
+/* 카카오톡 스타일 반응 선택 팝업 */
+.reaction-picker-popover {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 0;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px;
+  background: #141c28;
+  border: 1.5px solid #c5a059;
+  border-radius: 9999px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5), 0 0 12px rgba(197, 160, 89, 0.3);
+  z-index: 100;
+  animation: popIn 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+  white-space: nowrap;
+}
+
+@keyframes popIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.reaction-option-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 9999px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  background: transparent;
+  border: none;
+  color: #f1f5f9;
+  cursor: pointer;
+  transition: all 0.12s ease;
+}
+
+.reaction-option-btn:hover {
+  background: rgba(197, 160, 89, 0.3);
+  color: #fff;
+  transform: scale(1.08);
+}
+
 .feedback-item-time {
   font-size: 0.78rem;
   color: var(--text-dim);
-  align-self: flex-end;
 }
 
 .empty-placeholder {
